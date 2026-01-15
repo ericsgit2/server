@@ -1,0 +1,46 @@
+name: Build Xray Server (linux amd64 & arm64)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Xray source
+        uses: actions/checkout@v4
+        with:
+          repository: XTLS/Xray-core
+          fetch-depth: 1
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Disable Xray startup banner
+        run: |
+          sed -i 's/fmt.Println(version())/\/\/ banner disabled/' core/core.go
+
+      - name: Build server (linux ${{ matrix.arch }})
+        env:
+          CGO_ENABLED: 0
+        run: |
+          go build \
+            -o server \
+            -trimpath \
+            -buildvcs=false \
+            -ldflags="-s -w -buildid=" \
+            ./main
+
+      - name: Verify binary
+        run: |
+          file server || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server
